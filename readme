@@ -1,0 +1,14 @@
+Este repositorio pertenece a la asignatura Análisis de datos ómicos del máster en Bioinformática y bioestadística de la UOC.
+
+En este repositorio se encuentran los siguientes archivos:
+
+- Informe original de la PEC1 (PEC1 Informe. Ricardo Zamarreño Martins)
+- Objeto contenedor con los datos y los metadatos en formato binario (summarized_experiment.Rda)
+- Código R para la exploración de los datos y metadatos, en formato R markdown(*) (PEC1.Rmd)
+- Datos en formato texto (human_cachexia.txt)
+
+
+Aclaraciones:
+
+* He incluido el código R para la exploración de los datos y los metadatos acerca del dataset en el mismo archivo Rmarkdown, 
+  ya que en él se encuentran todos los comandos utilizados (todo el código R original) y todo el código uti8lizado para los metadatos.
