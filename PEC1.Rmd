@@ -1,0 +1,197 @@
+---
+title: "PEC 1 Análisis de datos ómicos"
+author: "Ricardo Zamarreño Martins"
+date: "2024-10-29"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 2
+    latex_engine: pdflatex
+    keep_tex: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Abstract
+
+En este documento se recoge la creación de un contenedor de tipo SummarizedExperiment que contenga los datos y metadas acerca del dataset elegido. En este caso, el dataset que se ha elegido ha sido: **human_cachexia.csv**. En este apartado incluimos el archivo  description.md que se incluía en el dataset:
+
+**This is the famous cachexia dataset used in several MetaboAnalyst tutorials Available from:**
+
+https://rest.xialab.ca/api/download/metaboanalyst/human_cachexia.csv
+
+\begin{itemize}
+    \item Successfully passed sanity check!
+    \item Samples are not paired.
+    \item 2 groups were detected in samples.
+    \item All data values are numeric.
+    \item A total of 0 (0\%) missing values were detected.
+\end{itemize}
+
+Este dataset incluye información relacionada con la enfermedad humana **Caquexia**, aportando datos sobre la pérdida de músculo y las diferentes concentraciones de metabolitos.
+
+Lo primero que haremos será descargar los datos, visualizarlos, revisarlos y crear el contenedor. Para ello nos vamos a valer de las bibliotecas SummarizedExperiment y readr. Posteriormente se realizará la creación de un repositorio en  GitHub donde se incluirá toda la información y los archivos creados.
+
+## Configuración Inicial
+
+Primero, cargamos las librería necesarias. Estas librería serán imprescindibles para poder realizar el trabajo, ya que las sentencias utilizadas para la carga de datos y la creación del contenedor pertenecen a dichas librerías.
+
+```{r, message=FALSE}
+
+library(SummarizedExperiment)
+library(readr)
+
+```
+
+
+## Carga de Datos
+
+Descargamos y leemos el archivo CSV que contiene los datos metabolómicos, este caso, "human_cachexia.csv". 
+
+```{r load_data}
+# Descargar los datos del repositorio
+# Se realiza la descarga del dataset del repositorio
+
+#"https://github.com/nutrimetabolomics/metaboData/blob/main/Datasets/2024-Cachexia/human_cachexia.csv"
+
+# Leer los datos
+data <- read_csv("human_cachexia.csv")
+```
+
+
+## Exploración de Datos
+
+En este apartado  vamos a  realizar una exploración, un vistazo incial, de que datos se incluyen en el dataset. De esta forma podremos tener una visión general de cómo se estructuran los datos y que información nos proporcionan.
+
+```{r}
+# Primeras filas del dataset
+head(data)
+```
+
+Cpn el comando head() podemos ver las primeras filas del dataset, permitiéndonos hacernos una idea de cómo están organizados los datos y qué se va a incluir en la información.
+
+```{r}
+# Estructura del dataset
+str(data)
+```
+
+Con el comando str(), podremos ver la estructura de los datos. Vemos que se trata de una tabla de 77 filas por 65 columnas, o lo que es lo mismo, 77 casos para 65 variables.
+
+```{r}
+# Nombres de las columnas
+colnames(data)
+```
+
+El comando colnames() nos aportará datos sobre el nombre de las columnas. En este trabajo, los nombres de las columnas responden a un número de identificación "Patient ID", a una variable de pérdida múscular en función de si presenta pérdida o no "Muscle loss" y a 63 tipos de metabolitos diferentes.
+
+```{r}
+# Resumen estadístico de los datos
+summary(data)
+```
+
+Por último, el comando summary(), nos arroja información estadística sobre los datos, facilitando la compresión de cómo varían los datos a lo largo del estudio.
+
+
+## Preparación de Datos
+
+Separamos los datos en sus componentes principales: IDs de paciente, información sobre pérdida muscular y matriz de datos metabolómicos. De esta forma podremos crear una matriz de datos y dos variables ante las cuales responden los datos.
+
+```{r data_prep}
+# Separar los IDs de paciente y los datos
+patient_ids <- data$`Patient ID`
+muscle_loss <- data$`Muscle loss`
+data_matrix <- as.matrix(data[,-(1:2)])  # No incluye las dos primeras columnas
+```
+
+
+## Creación de Metadatos
+
+En este apartado nos centramos en la creación de los metadatos para las columnas (metabolitos) y las filas (pacientes).
+
+```{r metadata_creation}
+# Crear los metadatos de las columnas (metabolitos)
+colData <- data.frame(
+  metabolite = colnames(data_matrix),
+  row.names = colnames(data_matrix)
+)
+
+# Crear los metadatos de las filas (pacientes)
+rowData <- data.frame(
+  patient_id = patient_ids,
+  muscle_loss = muscle_loss,
+  condition = ifelse(grepl("cachexic", patient_ids), "cachexic", "control"),
+  row.names = patient_ids
+)
+```
+
+
+## Creación del contenedor SummarizedExperiment
+
+Construimos el contenedor SummarizedExperiment con los datos y metadatos preparados en los apartados anteriores.
+
+```{r create_SE}
+
+se <- SummarizedExperiment(
+  assays = list(abundance = data_matrix),
+  colData = colData,
+  rowData = rowData
+)
+```
+
+
+## Adición de Metadatos del Experimento
+
+Añadimos información adicional sobre el experimento como metadatos. En esta sección añadiremos datos relevantes sobre el estudio.
+
+```{r add_metadata}
+metadata(se) <- list(
+    # Información general
+    description = "Metabolomic data for cachexic and control patients",
+    date = Sys.Date(),
+    researcher = "MetaboAnalyst tutorials",
+    experiment_type = "Human Cachexia Metabolomics",
+    
+    # Información técnica
+    sample_type = "Blood plasma",
+    technology = "NMR spectroscopy",
+    
+    # Estadísticas básicas
+    total_metabolites = ncol(data_matrix),
+    total_samples = nrow(data_matrix),
+    missing_values = sum(is.na(data_matrix))
+)
+
+```
+
+
+## Resumen Final
+
+Por último, mostraremos el contenedor ya creado, así como sus metadatos. Además, crearemos el archivo contenedor .Rda solicitado en el ejercicio.
+
+```{r summary}
+# Resumen del contenedor SummarizedExperiment
+print(se)
+metadata(se)  # Metadatos del experimento
+
+# Creación del archivo se
+save(se, file = "summarized_experiment.Rda")
+```
+
+
+## Conclusiones
+
+De esta forma hemos podido crear un contenedor del tipo SummaridezExperiment y observar un resumen de su estructura y sus metadatos. Si bien el dataset utilizado no contiene demasiados pacientes, si que podemos hacernos una idea de cómo de presente está la enfermedad en la población del estudio y qué aminoácidos se presentan con mayor proporción en el estudio (gracias a las medidas estadísticas calculadas anteriormente),
+
+Para finalizar, realizamos la creación del repositorio en Github y así incluir todas las partes y archivos demandados en el trabajo.
+
+## Repositorio Github
+
+El código, los datos y el informe se pueden encontrar en el siguiente repositorio de GitHub:
+
+[Repositorio en GitHub](https://github.com/RickZam/Zamarreno-Martins-Ricardo-PEC1)
